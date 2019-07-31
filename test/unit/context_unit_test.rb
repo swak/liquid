@@ -485,7 +485,7 @@ class ContextUnitTest < Minitest::Test
     super_context = Context.new('my_environment_value' => 'my value')
     subcontext = super_context.new_isolated_subcontext
 
-    assert_equal 'my value',subcontext['my_environment_value']
+    assert_equal 'my value', subcontext['my_environment_value']
   end
 
   def test_new_isolated_subcontext_inherits_resource_limits
@@ -497,7 +497,7 @@ class ContextUnitTest < Minitest::Test
 
   def test_new_isolated_subcontext_inherits_exception_renderer
     super_context = Context.new
-    super_context.exception_renderer = -> (_e) { 'my exception message' }
+    super_context.exception_renderer = ->(_e) { 'my exception message' }
     subcontext = super_context.new_isolated_subcontext
     assert_equal 'my exception message', subcontext.handle_error(Liquid::Error.new)
   end
