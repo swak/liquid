@@ -138,9 +138,12 @@ class RenderTagTest < Minitest::Test
   end
 
   def test_increment_is_isolated_between_renders
-    skip 'Increment currently leaks between tests'
-
     Liquid::Template.file_system = StubFileSystem.new('incr' => '{% increment %}')
     assert_template_result '010', '{% increment %}{% increment %}{% render "incr" %}'
+  end
+
+  def test_decrement_is_isolated_between_renders
+    Liquid::Template.file_system = StubFileSystem.new('decr' => '{% decrement %}')
+    assert_template_result '-1-2-1', '{% decrement %}{% decrement %}{% render "decr" %}'
   end
 end

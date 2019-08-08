@@ -26,9 +26,11 @@ module Liquid
       template_name = context.evaluate(@template_name_expr)
       raise ArgumentError.new(options[:locale].t("errors.argument.include")) unless template_name
 
-      partial = PartialCache
-                .for(context, parse_context: parse_context)
-                .load(template_name)
+      partial = PartialCache.load(
+        template_name,
+        context: context,
+        parse_context: parse_context
+      )
 
       inner_context = context.new_isolated_subcontext
       inner_context.template_name = template_name

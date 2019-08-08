@@ -12,24 +12,25 @@ module Liquid
   #
   #   context['bob']  #=> nil  class Context
   class Context
-    attr_reader :scopes, :errors, :registers, :environments, :resource_limits, :static_registers
+    attr_reader :scopes, :errors, :registers, :environments, :resource_limits, :static_registers, :static_environments
     attr_accessor :exception_renderer, :template_name, :partial, :global_filter, :strict_variables, :strict_filters
 
     # rubocop:disable Metrics/ParameterLists
-    def self.build(environments: {}, outer_scope: {}, registers: {}, rethrow_errors: false, resource_limits: nil, static_registers: {})
-      new(environments, outer_scope, registers, rethrow_errors, resource_limits, static_registers)
+    def self.build(environments: {}, outer_scope: {}, registers: {}, rethrow_errors: false, resource_limits: nil, static_registers: {}, static_environments: {})
+      new(environments, outer_scope, registers, rethrow_errors, resource_limits, static_registers, static_environments)
     end
 
-    def initialize(environments = {}, outer_scope = {}, registers = {}, rethrow_errors = false, resource_limits = nil, static_registers = {})
-      @environments     = [environments].flatten
-      @scopes           = [(outer_scope || {})]
-      @registers        = registers
-      @static_registers = static_registers.freeze
-      @errors           = []
-      @partial          = false
-      @strict_variables = false
-      @resource_limits  = resource_limits || ResourceLimits.new(Template.default_resource_limits)
-      @base_scope_depth = 0
+    def initialize(environments = {}, outer_scope = {}, registers = {}, rethrow_errors = false, resource_limits = nil, static_registers = {}, static_environments = {})
+      @environments        = [environments].flatten
+      @static_environments = [static_environments].flatten.map(&:freeze).freeze
+      @scopes              = [(outer_scope || {})]
+      @registers           = registers
+      @static_registers    = static_registers.freeze
+      @errors              = []
+      @partial             = false
+      @strict_variables    = false
+      @resource_limits     = resource_limits || ResourceLimits.new(Template.default_resource_limits)
+      @base_scope_depth    = 0
       squash_instance_assigns_with_environments
 
       @this_stack_used = false
@@ -140,8 +141,8 @@ module Liquid
       check_overflow
 
       Context.build(
-        environments: environments,
         resource_limits: resource_limits,
+        static_environments: static_environments,
         static_registers: static_registers
       ).tap do |subcontext|
         subcontext.base_scope_depth = base_scope_depth + 1
@@ -194,17 +195,8 @@ module Liquid
 
       variable = nil
 
-      if scope.nil?
-        @environments.each do |e|
-          variable = lookup_and_evaluate(e, key, raise_on_not_found: raise_on_not_found)
-          # When lookup returned a value OR there is no value but the lookup also did not raise
-          # then it is the value we are looking for.
-          if !variable.nil? || @strict_variables && raise_on_not_found
-            scope = e
-            break
-          end
-        end
-      end
+      scope ||= find_environment(@environments, key, raise_on_not_found: raise_on_not_found)
+      scope ||= find_environment(@static_environments, key, raise_on_not_found: raise_on_not_found)
 
       scope ||= @environments.last || @scopes.last
       variable ||= lookup_and_evaluate(scope, key, raise_on_not_found: raise_on_not_found)
@@ -234,6 +226,16 @@ module Liquid
     attr_writer :base_scope_depth, :warnings, :errors
 
     private
+
+    def find_environment(environments, key, raise_on_not_found:)
+      environments.each do |e|
+        variable = lookup_and_evaluate(e, key, raise_on_not_found: raise_on_not_found)
+        if !variable.nil? || @strict_variables && raise_on_not_found
+          return e
+        end
+      end
+      nil
+    end
 
     attr_reader :base_scope_depth
 
