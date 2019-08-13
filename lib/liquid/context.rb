@@ -191,15 +191,12 @@ module Liquid
       # This was changed from find() to find_index() because this is a very hot
       # path and find_index() is optimized in MRI to reduce object allocation
       index = @scopes.find_index { |s| s.key?(key) }
-      scope = @scopes[index] if index
 
-      variable = nil
-
-      scope ||= find_environment(@environments, key, raise_on_not_found: raise_on_not_found)
-      scope ||= find_environment(@static_environments, key, raise_on_not_found: raise_on_not_found)
-
-      scope ||= @environments.last || @scopes.last
-      variable ||= lookup_and_evaluate(scope, key, raise_on_not_found: raise_on_not_found)
+      variable = if index
+        lookup_and_evaluate(@scopes[index], key, raise_on_not_found: raise_on_not_found)
+      else
+        try_variable_find_in_environments(key, raise_on_not_found: raise_on_not_found)
+      end
 
       variable = variable.to_liquid
       variable.context = self if variable.respond_to?(:context=)
@@ -227,17 +224,23 @@ module Liquid
 
     private
 
-    def find_environment(environments, key, raise_on_not_found:)
-      environments.each do |e|
-        variable = lookup_and_evaluate(e, key, raise_on_not_found: raise_on_not_found)
-        if !variable.nil? || @strict_variables && raise_on_not_found
-          return e
+    attr_reader :base_scope_depth
+
+    def try_variable_find_in_environments(key, raise_on_not_found:)
+      @environments.each do |environment|
+        found_variable = lookup_and_evaluate(environment, key, raise_on_not_found: raise_on_not_found)
+        if !found_variable.nil? || @strict_variables && raise_on_not_found
+          return found_variable
+        end
+      end
+      @static_environments.each do |environment|
+        found_variable = lookup_and_evaluate(environment, key, raise_on_not_found: raise_on_not_found)
+        if !found_variable.nil? || @strict_variables && raise_on_not_found
+          return found_variable
         end
       end
       nil
     end
-
-    attr_reader :base_scope_depth
 
     def check_overflow
       raise StackLevelError, "Nesting too deep".freeze if overflow?

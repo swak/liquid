@@ -8,9 +8,9 @@ module Liquid
       file_system = (context.registers[:file_system] ||= Liquid::Template.file_system)
       source = file_system.read_template_file(template_name)
       parse_context.partial = true
-      Liquid::Template.parse(source, parse_context).tap do |partial|
-        cached_partials[template_name] = partial
-      end
+
+      partial = Liquid::Template.parse(source, parse_context)
+      cached_partials[template_name] = partial
     ensure
       parse_context.partial = false
     end

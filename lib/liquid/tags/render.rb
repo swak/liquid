@@ -19,8 +19,6 @@ module Liquid
       end
     end
 
-    def parse(_tokens); end
-
     def render_to_output_buffer(context, output)
       # Though we evaluate this here we will only ever parse it as a string literal.
       template_name = context.evaluate(@template_name_expr)
